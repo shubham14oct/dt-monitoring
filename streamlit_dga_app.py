@@ -21,9 +21,9 @@ def get_duval_percentages(G1, G2, G3):
     P3 = (G3 / total) * 100
     return P1, P2, P3, total
 
-# 2. Diagnostic Functions (Using uppercase parameters to match input keys)
+# 2. Diagnostic Functions (Updated to accept C2H6)
 
-def diagnose_duval_t1(H2, CH4, C2H4, C2H2, CO):
+def diagnose_duval_t1(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Duval Triangle 1: Uses CH4, C2H4, C2H2. Regions for D1, D2, T1, T2, T3, PD."""
     P_CH4, P_C2H4, P_C2H2, total = get_duval_percentages(CH4, C2H4, C2H2)
     
@@ -44,7 +44,7 @@ def diagnose_duval_t1(H2, CH4, C2H4, C2H2, CO):
         
     return f"{diagnosis} (CH4: {P_CH4:.1f}%, C2H4: {P_C2H4:.1f}%, C2H2: {P_C2H2:.1f}%)"
 
-def diagnose_duval_t4(H2, CH4, C2H4, C2H2, CO):
+def diagnose_duval_t4(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Duval Triangle 4: Uses H2, C2H2, C2H4. Regions for T3, D2, S (Stray Gassing)."""
     P_H2, P_C2H2, P_C2H4, total = get_duval_percentages(H2, C2H2, C2H4)
 
@@ -62,7 +62,7 @@ def diagnose_duval_t4(H2, CH4, C2H4, C2H2, CO):
         
     return f"{diagnosis} (H2: {P_H2:.1f}%, C2H2: {P_C2H2:.1f}%, C2H4: {P_C2H4:.1f}%)"
 
-def diagnose_rogers_ratio(H2, CH4, C2H4, C2H2, CO):
+def diagnose_rogers_ratio(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Rogers Ratio Method: Calculates 3 ratios and uses lookup table."""
     ratios = {
         'R1': CH4 / H2 if H2 > 0 else 99,
@@ -93,7 +93,7 @@ def diagnose_rogers_ratio(H2, CH4, C2H4, C2H2, CO):
     
     return f"Code: {code}XX, Diagnosis: {diag} (R1:{ratios['R1']:.2f}, R2:{ratios['R2']:.2f}, R5:{ratios['R5']:.2f})"
 
-def diagnose_doernenburg(H2, CH4, C2H4, C2H2, CO):
+def diagnose_doernenburg(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Doernenburg's Method: Checks four ratios against specific limits."""
     # Doernenburg only applicable if certain gas levels are met (simplified condition here)
     if H2 < 100 or CH4 < 10 or C2H2 < 0.5 or C2H4 < 50:
@@ -116,8 +116,7 @@ def diagnose_doernenburg(H2, CH4, C2H4, C2H2, CO):
         
     return f"{diagnosis} (Check thresholds in plot tab)"
 
-# Retained the T5 function, but removed it from the summary table and tabs as requested.
-def diagnose_duval_t5(H2, CH4, C2H4, C2H2, CO):
+def diagnose_duval_t5(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Duval Triangle 5: Focuses on thermal fault differentiation in DGA-R4."""
     P_CH4, P_C2H4, P_C2H2, total = get_duval_percentages(CH4, C2H4, C2H2)
     
@@ -136,7 +135,7 @@ def diagnose_duval_t5(H2, CH4, C2H4, C2H2, CO):
         
     return f"{diagnosis} (CH4: {P_CH4:.1f}%, C2H4: {P_C2H4:.1f}%, C2H2: {P_C2H2:.1f}%)"
 
-def diagnose_duval_pentagon(H2, CH4, C2H4, C2H2, CO):
+def diagnose_duval_pentagon(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Duval Pentagon Method (Conceptual): Uses all 5 gases via ratios."""
     
     # This method is complex, requiring 5 ratios to map to 5 axes.
@@ -153,7 +152,7 @@ def diagnose_duval_pentagon(H2, CH4, C2H4, C2H2, CO):
     else:
         return "Mixed/Unclassified Fault Zone"
 
-# --- Plotting Functions (Unchanged) ---
+# --- Plotting Functions (Updated to accept C2H6) ---
 
 def draw_duval_triangle_plot(fig, ax, G1_name, G2_name, G3_name, P1, P2, P3, fault_regions, title):
     """Draws a generic Duval triangle plot."""
@@ -208,7 +207,7 @@ def draw_duval_triangle_plot(fig, ax, G1_name, G2_name, G3_name, P1, P2, P3, fau
     ax.set_aspect('equal', adjustable='box')
 
 
-def plot_duval_t1(H2, CH4, C2H4, C2H2, CO):
+def plot_duval_t1(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Generates the Duval T1 Plot."""
     fig, ax = plt.subplots(figsize=(6, 6))
     
@@ -232,7 +231,7 @@ def plot_duval_t1(H2, CH4, C2H4, C2H2, CO):
 
     st.pyplot(fig)
 
-def plot_duval_t4(H2, CH4, C2H4, C2H2, CO):
+def plot_duval_t4(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Generates the Duval T4 Plot."""
     fig, ax = plt.subplots(figsize=(6, 6))
     
@@ -305,9 +304,11 @@ with st.sidebar:
     with col_input2:
         CH4 = st.number_input("Methane (CH4)", min_value=0.0, value=25.0, step=1.0, key="input_CH4")
         C2H2 = st.number_input("Acetylene (C2H2)", min_value=0.0, value=0.5, step=0.1, format="%.1f", key="input_C2H2")
-        st.number_input("Oxygen (O2)", min_value=0.0, value=5000.0, disabled=True, help="Optional Context Gas", key="input_O2")
+        # NEW INPUT ADDED: Ethane
+        C2H6 = st.number_input("Ethane (C2H6)", min_value=0.0, value=50.0, step=1.0, key="input_C2H6")
 
-    gas_data = {'H2': H2, 'CH4': CH4, 'C2H4': C2H4, 'C2H2': C2H2, 'CO': CO}
+    # Update gas_data dictionary to include C2H6
+    gas_data = {'H2': H2, 'CH4': CH4, 'C2H4': C2H4, 'C2H2': C2H2, 'CO': CO, 'C2H6': C2H6}
     
     st.markdown("---")
     
@@ -321,8 +322,9 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    total_gases = sum(gas_data.values())
-    st.metric("Total Combustible Gas (TCG)", f"{total_gases:,.1f} ppm", help="Sum of H2, CH4, C2H4, C2H2, CO")
+    # TCG calculation now includes C2H6
+    total_gases = sum([H2, CH4, C2H4, C2H2, CO, C2H6])
+    st.metric("Total Combustible Gas (TCG)", f"{total_gases:,.1f} ppm", help="Sum of H2, CH4, C2H4, C2H2, CO, C2H6")
     
 # --- Main Content: Conditional Summary and Dashboard ---
 
@@ -378,6 +380,7 @@ if st.session_state.analyzed:
         st.subheader("Rogers Ratio Method")
         st.text(f"Diagnosis: {diagnose_rogers_ratio(**gas_data)}")
         
+        # Recalculating ratios just for display consistency
         ratios = {
             'R1 (CH4/H2)': gas_data['CH4'] / gas_data['H2'] if gas_data['H2'] > 0 else float('inf'),
             'R2 (C2H4/CH4)': gas_data['C2H4'] / gas_data['CH4'] if gas_data['CH4'] > 0 else float('inf'),
@@ -400,10 +403,12 @@ if st.session_state.analyzed:
         st.markdown("Doernenburg requires specific minimum gas levels to be applicable.")
 
     with tab5:
-        st.subheader("Duval Pentagon (Conceptual)  ")
+        st.subheader("Duval Pentagon (Conceptual)")
         st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is provided here.")
         st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
         st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases (H2, CH4, C2H4, C2H2, CO).")
+        st.markdown(f"**Note on C2H6:** Ethane is primarily a product of low-temperature thermal faults in oil (T1). Its value here is **{C2H6} ppm**.")
+
 
 else:
     st.info("Input your DGA gas concentrations (ppm) in the sidebar on the left and click 'Analyze DGA Data' to view the full fault analysis dashboard.")
