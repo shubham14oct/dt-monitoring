@@ -21,7 +21,7 @@ def get_duval_percentages(G1, G2, G3):
     P3 = (G3 / total) * 100
     return P1, P2, P3, total
 
-# 2. Diagnostic Functions (Simplified Region Checks for Demonstration)
+# 2. Diagnostic Functions (Using uppercase parameters to match input keys)
 
 def diagnose_duval_t1(H2, CH4, C2H4, C2H2, CO):
     """Duval Triangle 1: Uses CH4, C2H4, C2H2. Regions for D1, D2, T1, T2, T3, PD."""
@@ -152,7 +152,7 @@ def diagnose_duval_pentagon(H2, CH4, C2H4, C2H2, CO):
     else:
         return "Mixed/Unclassified Fault Zone"
 
-# --- Plotting Functions ---
+# --- Plotting Functions (Unchanged) ---
 
 def draw_duval_triangle_plot(fig, ax, G1_name, G2_name, G3_name, P1, P2, P3, fault_regions, title):
     """Draws a generic Duval triangle plot."""
@@ -280,7 +280,16 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ Distribution Transformer DGA Fault Analysis Portal")
-st.caption("Enter the gas concentrations (in ppm) below to generate a comprehensive fault diagnosis.")
+st.caption("Enter the gas concentrations (in ppm) below and click 'Analyze' to generate a comprehensive fault diagnosis.")
+
+# --- Session State Management ---
+# Initialize session state variable to control when analysis runs
+if 'analyzed' not in st.session_state:
+    st.session_state.analyzed = False
+
+# Callback function to set the state when the button is clicked
+def set_analysis_state_true():
+    st.session_state.analyzed = True
 
 # --- Gas Input Sidebar ---
 with st.sidebar:
@@ -295,104 +304,118 @@ with st.sidebar:
     with col_input2:
         CH4 = st.number_input("Methane (CH4)", min_value=0.0, value=25.0, step=1.0, key="input_CH4")
         C2H2 = st.number_input("Acetylene (C2H2)", min_value=0.0, value=0.5, step=0.1, format="%.1f", key="input_C2H2")
-        # Placeholder for CO2 or other context, just to fill the space
         st.number_input("Oxygen (O2)", min_value=0.0, value=5000.0, disabled=True, help="Optional Context Gas", key="input_O2")
 
     gas_data = {'H2': H2, 'CH4': CH4, 'C2H4': C2H4, 'C2H2': C2H2, 'CO': CO}
     
     st.markdown("---")
+    
+    # Analysis Trigger Button
+    st.button(
+        "Analyze DGA Data", 
+        key="analyze_button", 
+        type="primary",
+        use_container_width=True,
+        on_click=set_analysis_state_true
+    )
+    
+    st.markdown("---")
     total_gases = sum(gas_data.values())
     st.metric("Total Combustible Gas (TCG)", f"{total_gases:,.1f} ppm", help="Sum of H2, CH4, C2H4, C2H2, CO")
     
-# --- Main Content: Summary and Dashboard ---
+# --- Main Content: Conditional Summary and Dashboard ---
 
-st.header("Fault Analysis Summary")
-
-# Run all diagnostic models
-analysis_results = [
-    {"Model": "Duval’s Triangle 1", "Diagnosis": diagnose_duval_t1(**gas_data)},
-    {"Model": "Duval’s Triangle 4", "Diagnosis": diagnose_duval_t4(**gas_data)},
-    {"Model": "Duval’s Triangle 5", "Diagnosis": diagnose_duval_t5(**gas_data)},
-    {"Model": "Rogers Ratio Method", "Diagnosis": diagnose_rogers_ratio(**gas_data)},
-    {"Model": "Doernenburg’s Method", "Diagnosis": diagnose_doernenburg(**gas_data)},
-    {"Model": "Duval’s Pentagon", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
-]
-
-# Display the summary table
-st.table(analysis_results)
-
-st.header("Diagnostic Model Dashboard")
-st.info("The red marker on the plots shows your input data point. The regions indicate common fault types.")
-
-# --- Tabbed Dashboard ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "Duval T1", 
-    "Duval T4", 
-    "Duval T5 (Conceptual)", 
-    "Pentagon (Conceptual)", 
-    "Rogers Ratios", 
-    "Doernenburg"])
-
-# Note: The functions are now called using the same **gas_data dictionary and match the corrected uppercase parameters.
-
-with tab1:
-    st.subheader("Duval Triangle 1: CH4 / C2H4 / C2H2")
-    plot_duval_t1(**gas_data)
-    st.markdown("""
-        **Diagnosis Key:**
-        - **PD**: Partial Discharge
-        - **T1**: Thermal Fault T < 300°C
-        - **T2**: Thermal Fault 300°C–700°C
-        - **T3**: Thermal Fault T > 700°C
-        - **D1/D2**: Discharge/Arcing
-    """)
-
-with tab2:
-    st.subheader("Duval Triangle 4: H2 / C2H2 / C2H4")
-    plot_duval_t4(**gas_data)
-    st.markdown("""
-        **Diagnosis Key (High-temperature focus):**
-        - **T3**: Severe Thermal Fault T > 700°C
-        - **D2**: High Energy Arcing
-        - **S**: Stray Gassing / Hot metal contacts
-    """)
-
-with tab3:
-    st.subheader("Duval Triangle 5 (Conceptual): CH4 / C2H4 / C2H2")
-    st.warning("Plot not generated due to T5 being a regional variation of T1/T2. See summary for rule-based T5 diagnosis.")
-    st.code(f"T5 Diagnosis: {diagnose_duval_t5(**gas_data)}")
-    st.markdown("Duval T5 is often used for differentiating specific cellulosic involvement in thermal faults.")
-
-with tab4:
-    st.subheader("Duval Pentagon (Conceptual)")
-    st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is shown in the summary.")
-    st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
-    st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases.")
-
-with tab5:
-    st.subheader("Rogers Ratio Method")
-    st.text(f"Diagnosis: {diagnose_rogers_ratio(**gas_data)}")
+if st.session_state.analyzed:
     
-    ratios = {
-        'R1 (CH4/H2)': gas_data['CH4'] / gas_data['H2'] if gas_data['H2'] > 0 else float('inf'),
-        'R2 (C2H4/CH4)': gas_data['C2H4'] / gas_data['CH4'] if gas_data['CH4'] > 0 else float('inf'),
-        'R5 (C2H2/C2H4)': gas_data['C2H2'] / gas_data['C2H4'] if gas_data['C2H4'] > 0 else float('inf'),
-    }
-    
-    st.bar_chart(ratios, color='#1e3a8a')
-    st.markdown("Rogers method uses fixed ranges for three ratios (R1, R2, R5) to derive a diagnostic code.")
+    st.header("Fault Analysis Summary")
 
-with tab6:
-    st.subheader("Doernenburg’s Method")
-    st.text(f"Diagnosis: {diagnose_doernenburg(**gas_data)}")
-    
-    ratios_doernenburg = [
-        {"Ratio": "CH4 / H2", "Value": gas_data['CH4'] / gas_data['H2'] if gas_data['H2'] > 0 else float('inf'), "Threshold": "> 1.0 (for T2)"},
-        {"Ratio": "C2H2 / C2H4", "Value": gas_data['C2H2'] / gas_data['C2H4'] if gas_data['C2H4'] > 0 else float('inf'), "Threshold": "> 0.3 (for D1/D2)"},
-        {"Ratio": "C2H2 / CH4", "Value": gas_data['C2H2'] / gas_data['CH4'] if gas_data['CH4'] > 0 else float('inf'), "Threshold": "< 0.7 (for D1)"},
+    # Run all diagnostic models
+    analysis_results = [
+        {"Model": "Duval’s Triangle 1", "Diagnosis": diagnose_duval_t1(**gas_data)},
+        {"Model": "Duval’s Triangle 4", "Diagnosis": diagnose_duval_t4(**gas_data)},
+        {"Model": "Duval’s Triangle 5", "Diagnosis": diagnose_duval_t5(**gas_data)},
+        {"Model": "Rogers Ratio Method", "Diagnosis": diagnose_rogers_ratio(**gas_data)},
+        {"Model": "Doernenburg’s Method", "Diagnosis": diagnose_doernenburg(**gas_data)},
+        {"Model": "Duval’s Pentagon", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
     ]
-    st.dataframe(ratios_doernenburg, hide_index=True)
-    st.markdown("Doernenburg requires specific minimum gas levels to be applicable.")
+
+    # Display the summary table
+    st.table(analysis_results)
+
+    st.header("Diagnostic Model Dashboard")
+    st.info("The red marker on the plots shows your input data point. The regions indicate common fault types.")
+
+    # --- Tabbed Dashboard ---
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "Duval T1", 
+        "Duval T4", 
+        "Duval T5 (Conceptual)", 
+        "Pentagon (Conceptual)", 
+        "Rogers Ratios", 
+        "Doernenburg"])
+
+    with tab1:
+        st.subheader("Duval Triangle 1: CH4 / C2H4 / C2H2")
+        plot_duval_t1(**gas_data)
+        st.markdown("""
+            **Diagnosis Key:**
+            - **PD**: Partial Discharge
+            - **T1**: Thermal Fault T < 300°C
+            - **T2**: Thermal Fault 300°C–700°C
+            - **T3**: Thermal Fault T > 700°C
+            - **D1/D2**: Discharge/Arcing
+        """)
+
+    with tab2:
+        st.subheader("Duval Triangle 4: H2 / C2H2 / C2H4")
+        plot_duval_t4(**gas_data)
+        st.markdown("""
+            **Diagnosis Key (High-temperature focus):**
+            - **T3**: Severe Thermal Fault T > 700°C
+            - **D2**: High Energy Arcing
+            - **S**: Stray Gassing / Hot metal contacts
+        """)
+
+    with tab3:
+        st.subheader("Duval Triangle 5 (Conceptual): CH4 / C2H4 / C2H2")
+        st.warning("Plot not generated due to T5 being a regional variation of T1/T2. See summary for rule-based T5 diagnosis.")
+        st.code(f"T5 Diagnosis: {diagnose_duval_t5(**gas_data)}")
+        st.markdown("Duval T5 is often used for differentiating specific cellulosic involvement in thermal faults.")
+
+    with tab4:
+        st.subheader("Duval Pentagon (Conceptual)")
+        st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is shown in the summary.")
+        st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
+        st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases.")
+
+    with tab5:
+        st.subheader("Rogers Ratio Method")
+        st.text(f"Diagnosis: {diagnose_rogers_ratio(**gas_data)}")
+        
+        ratios = {
+            'R1 (CH4/H2)': gas_data['CH4'] / gas_data['H2'] if gas_data['H2'] > 0 else float('inf'),
+            'R2 (C2H4/CH4)': gas_data['C2H4'] / gas_data['CH4'] if gas_data['CH4'] > 0 else float('inf'),
+            'R5 (C2H2/C2H4)': gas_data['C2H2'] / gas_data['C2H4'] if gas_data['C2H4'] > 0 else float('inf'),
+        }
+        
+        st.bar_chart(ratios, color='#1e3a8a')
+        st.markdown("Rogers method uses fixed ranges for three ratios (R1, R2, R5) to derive a diagnostic code.")
+
+    with tab6:
+        st.subheader("Doernenburg’s Method")
+        st.text(f"Diagnosis: {diagnose_doernenburg(**gas_data)}")
+        
+        ratios_doernenburg = [
+            {"Ratio": "CH4 / H2", "Value": gas_data['CH4'] / gas_data['H2'] if gas_data['H2'] > 0 else float('inf'), "Threshold": "> 1.0 (for T2)"},
+            {"Ratio": "C2H2 / C2H4", "Value": gas_data['C2H2'] / gas_data['C2H4'] if gas_data['C2H4'] > 0 else float('inf'), "Threshold": "> 0.3 (for D1/D2)"},
+            {"Ratio": "C2H2 / CH4", "Value": gas_data['C2H2'] / gas_data['CH4'] if gas_data['CH4'] > 0 else float('inf'), "Threshold": "< 0.7 (for D1)"},
+        ]
+        st.dataframe(ratios_doernenburg, hide_index=True)
+        st.markdown("Doernenburg requires specific minimum gas levels to be applicable.")
+
+else:
+    st.info("Input your DGA gas concentrations (ppm) in the sidebar on the left and click 'Analyze DGA Data' to view the full fault analysis dashboard.")
+
 
 st.markdown("---")
 st.markdown("Developed for Utility Operators to rapidly assess DGA results.")
