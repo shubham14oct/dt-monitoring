@@ -116,6 +116,7 @@ def diagnose_doernenburg(H2, CH4, C2H4, C2H2, CO):
         
     return f"{diagnosis} (Check thresholds in plot tab)"
 
+# Retained the T5 function, but removed it from the summary table and tabs as requested.
 def diagnose_duval_t5(H2, CH4, C2H4, C2H2, CO):
     """Duval Triangle 5: Focuses on thermal fault differentiation in DGA-R4."""
     P_CH4, P_C2H4, P_C2H2, total = get_duval_percentages(CH4, C2H4, C2H2)
@@ -329,14 +330,13 @@ if st.session_state.analyzed:
     
     st.header("Fault Analysis Summary")
 
-    # Run all diagnostic models
+    # Run only the specified diagnostic models
     analysis_results = [
-        {"Model": "Duval’s Triangle 1", "Diagnosis": diagnose_duval_t1(**gas_data)},
-        {"Model": "Duval’s Triangle 4", "Diagnosis": diagnose_duval_t4(**gas_data)},
-        {"Model": "Duval’s Triangle 5", "Diagnosis": diagnose_duval_t5(**gas_data)},
-        {"Model": "Rogers Ratio Method", "Diagnosis": diagnose_rogers_ratio(**gas_data)},
+        {"Model": "Duval's Triangle 1 (T1/T2/D1)", "Diagnosis": diagnose_duval_t1(**gas_data)},
+        {"Model": "Duval's Triangle 4 (T3/D2/S)", "Diagnosis": diagnose_duval_t4(**gas_data)},
+        {"Model": "Rogers Ratio Method (R1/R2/R5)", "Diagnosis": diagnose_rogers_ratio(**gas_data)},
         {"Model": "Doernenburg’s Method", "Diagnosis": diagnose_doernenburg(**gas_data)},
-        {"Model": "Duval’s Pentagon", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
+        {"Model": "Duval’s Pentagon (Conceptual)", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
     ]
 
     # Display the summary table
@@ -345,14 +345,13 @@ if st.session_state.analyzed:
     st.header("Diagnostic Model Dashboard")
     st.info("The red marker on the plots shows your input data point. The regions indicate common fault types.")
 
-    # --- Tabbed Dashboard ---
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    # --- Tabbed Dashboard (Only including the requested tabs) ---
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "Duval T1", 
         "Duval T4", 
-        "Duval T5 (Conceptual)", 
-        "Pentagon (Conceptual)", 
         "Rogers Ratios", 
-        "Doernenburg"])
+        "Doernenburg",
+        "Pentagon (Conceptual)"])
 
     with tab1:
         st.subheader("Duval Triangle 1: CH4 / C2H4 / C2H2")
@@ -361,8 +360,7 @@ if st.session_state.analyzed:
             **Diagnosis Key:**
             - **PD**: Partial Discharge
             - **T1**: Thermal Fault T < 300°C
-            - **T2**: Thermal Fault 300°C–700°C
-            - **T3**: Thermal Fault T > 700°C
+            - **T2/T3**: Thermal Fault (medium to high temp)
             - **D1/D2**: Discharge/Arcing
         """)
 
@@ -377,18 +375,6 @@ if st.session_state.analyzed:
         """)
 
     with tab3:
-        st.subheader("Duval Triangle 5 (Conceptual): CH4 / C2H4 / C2H2")
-        st.warning("Plot not generated due to T5 being a regional variation of T1/T2. See summary for rule-based T5 diagnosis.")
-        st.code(f"T5 Diagnosis: {diagnose_duval_t5(**gas_data)}")
-        st.markdown("Duval T5 is often used for differentiating specific cellulosic involvement in thermal faults.")
-
-    with tab4:
-        st.subheader("Duval Pentagon (Conceptual)")
-        st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is shown in the summary.")
-        st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
-        st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases.")
-
-    with tab5:
         st.subheader("Rogers Ratio Method")
         st.text(f"Diagnosis: {diagnose_rogers_ratio(**gas_data)}")
         
@@ -401,7 +387,7 @@ if st.session_state.analyzed:
         st.bar_chart(ratios, color='#1e3a8a')
         st.markdown("Rogers method uses fixed ranges for three ratios (R1, R2, R5) to derive a diagnostic code.")
 
-    with tab6:
+    with tab4:
         st.subheader("Doernenburg’s Method")
         st.text(f"Diagnosis: {diagnose_doernenburg(**gas_data)}")
         
@@ -412,6 +398,12 @@ if st.session_state.analyzed:
         ]
         st.dataframe(ratios_doernenburg, hide_index=True)
         st.markdown("Doernenburg requires specific minimum gas levels to be applicable.")
+
+    with tab5:
+        st.subheader("Duval Pentagon (Conceptual)  ")
+        st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is provided here.")
+        st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
+        st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases (H2, CH4, C2H4, C2H2, CO).")
 
 else:
     st.info("Input your DGA gas concentrations (ppm) in the sidebar on the left and click 'Analyze DGA Data' to view the full fault analysis dashboard.")
