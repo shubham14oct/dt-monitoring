@@ -21,7 +21,17 @@ def get_duval_percentages(G1, G2, G3):
     P3 = (G3 / total) * 100
     return P1, P2, P3, total
 
-# 2. Diagnostic Functions (Updated to accept C2H6)
+def get_pentagon_percentages(H2, CH4, C2H6, C2H4, C2H2):
+    """Normalizes the five key gases for the Pentagon plot (Total = sum of 5 gases)."""
+    gases = [H2, CH4, C2H6, C2H4, C2H2]
+    total = sum(gases)
+    if total == 0:
+        return [0] * 5, 0
+    
+    percentages = [(g / total) * 100 for g in gases]
+    return percentages, total
+
+# 2. Diagnostic Functions
 
 def diagnose_duval_t1(H2, CH4, C2H4, C2H2, CO, C2H6):
     """Duval Triangle 1: Uses CH4, C2H4, C2H2. Regions for D1, D2, T1, T2, T3, PD."""
@@ -136,23 +146,32 @@ def diagnose_duval_t5(H2, CH4, C2H4, C2H2, CO, C2H6):
     return f"{diagnosis} (CH4: {P_CH4:.1f}%, C2H4: {P_C2H4:.1f}%, C2H2: {P_C2H2:.1f}%)"
 
 def diagnose_duval_pentagon(H2, CH4, C2H4, C2H2, CO, C2H6):
-    """Duval Pentagon Method (Conceptual): Uses all 5 gases via ratios."""
+    """Duval Pentagon Method: Provides a diagnosis based on the dominant gas percentage."""
     
-    # This method is complex, requiring 5 ratios to map to 5 axes.
-    # We provide a conceptual, rule-based summary diagnosis here.
-    
-    if C2H2 > 10 and C2H4 > 50:
-        return "D2 / T3 (High Energy Arcing + Hotspot)"
-    elif H2 > 500 and C2H4 < 50:
-        return "PD / D1 (Partial Discharge / Low Energy Discharge)"
-    elif CO > 1000 and C2H4 < 10:
-        return "C (Cellulose/Paper degradation - thermal)"
-    elif C2H4 > 200 and H2 < 50:
-        return "T2 (Thermal Fault 300°C-700°C)"
-    else:
-        return "Mixed/Unclassified Fault Zone"
+    # Use the 5 gases for the pentagon
+    P_gases, total = get_pentagon_percentages(H2, CH4, C2H6, C2H4, C2H2)
+    if total == 0:
+        return "Not Applicable (Total pentagon gases is zero)"
 
-# --- Plotting Functions (Updated to accept C2H6) ---
+    P_H2, P_CH4, P_C2H6, P_C2H4, P_C2H2 = P_gases
+    
+    # Simple rule-based diagnosis based on high dominance
+    if P_H2 > 40 and P_C2H2 < 10:
+        diagnosis = "PD (Partial Discharge) or D1 (Low Energy Discharge)"
+    elif P_C2H2 > 30:
+        diagnosis = "D2 (High Energy Arcing)"
+    elif P_C2H4 > 50:
+        diagnosis = "T3 (Severe Thermal Fault T > 700°C)"
+    elif P_C2H6 > 40 and P_CH4 < 20:
+        diagnosis = "T1 (Low Temperature Thermal Fault T < 300°C)"
+    elif P_CH4 > 50:
+        diagnosis = "T2 (Medium Temperature Thermal Fault 300°C–700°C)"
+    else:
+        diagnosis = "Mixed/Developing Fault Zone (Refer to plot)"
+        
+    return diagnosis
+
+# --- Plotting Functions 
 
 def draw_duval_triangle_plot(fig, ax, G1_name, G2_name, G3_name, P1, P2, P3, fault_regions, title):
     """Draws a generic Duval triangle plot."""
@@ -252,6 +271,71 @@ def plot_duval_t4(H2, CH4, C2H4, C2H2, CO, C2H6):
 
     st.pyplot(fig)
 
+def plot_duval_pentagon(H2, CH4, C2H4, C2H2, CO, C2H6):
+    """Generates the Duval Pentagon Plot using polar projection."""
+    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
+    
+    # 1. Prepare Data
+    # Gases for Pentagon: H2, CH4, C2H6, C2H4, C2H2
+    P_gases, total = get_pentagon_percentages(H2, CH4, C2H6, C2H4, C2H2)
+    
+    categories = ['H2', 'CH4', 'C2H6', 'C2H4', 'C2H2']
+    num_vars = len(categories)
+    
+    # Angles for each axis (starting H2 at 90 deg / pi/2)
+    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False)
+    angles += np.pi / 2 # Shift to start H2 at the top
+    
+    # Complete the circle for plotting the shape
+    angles = np.concatenate((angles, [angles[0]]))
+    P_gases_closed = np.concatenate((P_gases, [P_gases[0]]))
+    
+    # 2. Draw Pentagon Outline and Grid
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1) # Clockwise direction
+    
+    # Set the labels on the axes
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, fontsize=10, weight='bold')
+
+    # Set radial limits
+    ax.set_ylim(0, 100)
+    ax.set_yticks(np.arange(0, 101, 20))
+    ax.set_yticklabels([f"{y}%" for y in np.arange(0, 101, 20)], color="gray", size=8)
+    
+    # 3. Plot Fault Regions (Simplified, indicative regions for visualization)
+    
+    # [H2, CH4, C2H6, C2H4, C2H2] % coordinates (approximate center points)
+    regions_coords = {
+        'PD':    {'color': 'lightblue', 'coords': [100, 0, 0, 0, 0], 'text': 'PD'},
+        'T1':    {'color': 'lightgreen', 'coords': [0, 20, 80, 0, 0], 'text': 'T1'},
+        'T2':    {'color': 'yellow', 'coords': [0, 70, 10, 20, 0], 'text': 'T2'},
+        'T3':    {'color': 'orange', 'coords': [0, 0, 0, 100, 0], 'text': 'T3'},
+        'D1/D2': {'color': 'salmon', 'coords': [20, 0, 0, 10, 70], 'text': 'D'},
+    }
+    
+    for name, region in regions_coords.items():
+        # Plot a simplified point at 50% radius to represent the region center/marker
+        ax.plot(angles[:-1][categories.index(region['text'])], 50, 
+                marker='s', markersize=12, color=region['color'], alpha=0.6,
+                label=name, markeredgecolor='black', zorder=2)
+        ax.text(angles[:-1][categories.index(region['text'])], 50, region['text'], 
+                ha='center', va='center', fontsize=7, weight='bold', color='black', zorder=3)
+
+    # 4. Plot the User's Data Point
+    if total > 0:
+        ax.plot(angles, P_gases_closed, 'o-', linewidth=2, color='red', 
+                label='Input Data', markeredgecolor='black', markersize=8, zorder=4)
+        ax.fill(angles, P_gases_closed, 'red', alpha=0.25, zorder=3)
+    
+    ax.set_title("Duval Pentagon Plot (H2, CH4, C2H6, C2H4, C2H2)", 
+                 fontsize=14, fontweight='bold', pad=20)
+    
+    # Add a legend
+    ax.legend(loc='lower left', bbox_to_anchor=(1.05, 0.5), fontsize=9)
+
+    st.pyplot(fig)
+
 
 # --- Streamlit Application Layout ---
 
@@ -338,14 +422,14 @@ if st.session_state.analyzed:
         {"Model": "Duval's Triangle 4 (T3/D2/S)", "Diagnosis": diagnose_duval_t4(**gas_data)},
         {"Model": "Rogers Ratio Method (R1/R2/R5)", "Diagnosis": diagnose_rogers_ratio(**gas_data)},
         {"Model": "Doernenburg’s Method", "Diagnosis": diagnose_doernenburg(**gas_data)},
-        {"Model": "Duval’s Pentagon (Conceptual)", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
+        {"Model": "Duval’s Pentagon", "Diagnosis": diagnose_duval_pentagon(**gas_data)},
     ]
 
     # Display the summary table
     st.table(analysis_results)
 
     st.header("Diagnostic Model Dashboard")
-    st.info("The red marker on the plots shows your input data point. The regions indicate common fault types.")
+    st.info("The red marker on the plots shows your input data point. The regions/markers indicate common fault types.")
 
     # --- Tabbed Dashboard (Only including the requested tabs) ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -353,7 +437,7 @@ if st.session_state.analyzed:
         "Duval T4", 
         "Rogers Ratios", 
         "Doernenburg",
-        "Pentagon (Conceptual)"])
+        "Duval Pentagon"]) # Tab name updated
 
     with tab1:
         st.subheader("Duval Triangle 1: CH4 / C2H4 / C2H2")
@@ -403,11 +487,13 @@ if st.session_state.analyzed:
         st.markdown("Doernenburg requires specific minimum gas levels to be applicable.")
 
     with tab5:
-        st.subheader("Duval Pentagon (Conceptual)")
-        st.warning("The Pentagon method uses 5 ratios for a 2D plot. A conceptual visualization is provided here.")
-        st.code(f"Pentagon Diagnosis: {diagnose_duval_pentagon(**gas_data)}")
-        st.markdown("The Pentagon method aims to unify the diagnoses of all 5 fault gases (H2, CH4, C2H4, C2H2, CO).")
-        st.markdown(f"**Note on C2H6:** Ethane is primarily a product of low-temperature thermal faults in oil (T1). Its value here is **{C2H6} ppm**.")
+        st.subheader("Duval Pentagon Plot (H2, CH4, C2H6, C2H4, C2H2)")
+        plot_duval_pentagon(**gas_data)
+        st.code(f"Pentagon Diagnosis (Rule-based): {diagnose_duval_pentagon(**gas_data)}")
+        st.markdown("""
+            The Duval Pentagon plots the concentration percentages of the five fault gases ($\text{H}_2, \text{CH}_4, \text{C}_2\text{H}_6, \text{C}_2\text{H}_4, \text{C}_2\text{H}_2$) on a polar chart. 
+            The shape formed by the input data determines the fault type based on which gas axis is most dominant.
+            """)
 
 
 else:
